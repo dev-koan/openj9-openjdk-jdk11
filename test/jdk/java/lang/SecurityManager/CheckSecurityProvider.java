@@ -31,7 +31,7 @@
  * @test
  * @bug 6997010 7191662
  * @summary Consolidate java.security files into one file with modifications
- * @run main/othervm CheckSecurityProvider
+ * @run main CheckSecurityProvider
  */
 
 import java.security.Provider;
@@ -42,6 +42,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javax.crypto.Cipher;
+
 /*
  * The main benefit of this test is to catch merge errors or other types
  * of issues where one or more of the security providers are accidentally
@@ -51,6 +53,11 @@ import java.util.stream.Stream;
 public class CheckSecurityProvider {
     public static void main(String[] args) throws Exception {
         ModuleLayer layer = ModuleLayer.boot();
+        String javaHome = System.getProperty("java.home");
+        // Construct the likely path based on Java version (requires version check for full accuracy)
+        String securityFilePath = javaHome + (javaHome.contains("jre") ? "/lib/security/java.security" : "/conf/security/java.security");
+        
+        System.out.println("Default java.security file location: " + securityFilePath);;
 
         System.setSecurityManager(new SecurityManager());
 
@@ -102,16 +109,24 @@ public class CheckSecurityProvider {
         layer.findModule("openjceplus")
             .ifPresent(m -> expected.add("com.ibm.crypto.plus.provider.OpenJCEPlus"));
 
+        // Cipher.getInstance("AES", "OpenJCEPlus");
+
         List<String> actual = Stream.of(Security.getProviders())
             .map(p -> p.getClass().getName())
             .collect(Collectors.toList());
+
+        Provider[] plist = Security.getProviders();
+        for (int i = 0; i < plist.length; i++)
+            System.out.println(plist[i].getName());
 
         System.out.println("Expected providers:");
         expected.stream().forEach(System.out::println);
         System.out.println("Actual providers:");
         actual.stream().forEach(System.out::println);
 
-        if (expected.size() != actual.size()) {
+        // throw new Exception("kmdk/df");
+
+        if (expected.size() == actual.size()) {
             throw new Exception("Unexpected provider count. "
                 + "Expected: " + expected.size() + ". Actual: " + actual.size());
         }
